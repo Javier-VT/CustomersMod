@@ -46,7 +46,7 @@ displayName="${mod_name}" #mandatory
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Restaurant customers: chairs, restaurant sign, takeaway bell and NPC customers with orders, tips and reputation. Port of the Bedrock Customers Add-on.
+Restaurant mod: chairs, a restaurant sign, a takeaway bell and NPC customers that order food from vanilla and other food mods, pay tips and build your reputation.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.

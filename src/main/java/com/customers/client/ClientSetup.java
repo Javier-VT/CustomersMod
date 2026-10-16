@@ -14,5 +14,6 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void renderers(EntityRenderersEvent.RegisterRenderers e) {
         e.registerEntityRenderer(Reg.CUSTOMER.get(), CustomerRenderer::new);
+        e.registerEntityRenderer(Reg.SEAT.get(), net.minecraft.client.renderer.entity.NoopRenderer::new);
     }
 }

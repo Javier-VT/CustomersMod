@@ -253,7 +253,6 @@ public class CustomerEntity extends PathfinderMob {
         if (patienceTicks > maxPatience) {
             broadcast(Component.translatable(takeaway ? "customers.status.left_takeaway_patience" : "customers.status.left_patience", restaurantName, customerName));
             reputation(-3, true, "customers.reputation.lost", 3);
-            setSitting(false);
             discard();
             return;
         }
@@ -358,6 +357,12 @@ public class CustomerEntity extends PathfinderMob {
             getNavigation().stop();
             moveTo(chairX, sitY, chairZ, chairYaw, 0.0F);
             setYRot(chairYaw); setYBodyRot(chairYaw); setYHeadRot(chairYaw);
+            SeatEntity seat = com.customers.Reg.SEAT.get().create(level());
+            if (seat != null) {
+                seat.moveTo(chairX, sitY, chairZ, chairYaw, 0.0F);
+                level().addFreshEntity(seat);
+                startRiding(seat, true);
+            }
             setSitting(true);
             setState(State.WAITING);
             patienceTicks = 0; stuckTicks = 0; failedChair = "";
@@ -443,6 +448,16 @@ public class CustomerEntity extends PathfinderMob {
         entityData.set(LINE3, l3);
     }
 
+    /** Leave the seat and step out in front of the chair. */
+    private void standUp() {
+        if (isPassenger()) {
+            stopRiding();
+            double r = Math.toRadians(chairYaw);
+            moveTo(chairX - Math.sin(r) * 0.9, Math.floor(sitY + 0.72), chairZ + Math.cos(r) * 0.9, getYRot(), 0.0F);
+        }
+        setSitting(false);
+    }
+
     private void setSitting(boolean s) {
         entityData.set(SITTING, s);
     }
@@ -526,8 +541,8 @@ public class CustomerEntity extends PathfinderMob {
 
     private void startLeaving() {
         desiredItem = "";
+        standUp();
         hasChair = false;
-        setSitting(false);
         setState(State.LEAVING);
         leaveTimer = 60;
         getNavigation().stop();

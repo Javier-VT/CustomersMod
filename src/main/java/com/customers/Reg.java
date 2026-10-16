@@ -4,6 +4,7 @@ import com.customers.block.ChairBlock;
 import com.customers.block.RestaurantSignBlock;
 import com.customers.block.TakeawayBellBlock;
 import com.customers.entity.CustomerEntity;
+import com.customers.entity.SeatEntity;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import net.minecraft.core.registries.Registries;
@@ -71,6 +72,10 @@ public final class Reg {
     public static final DeferredHolder<EntityType<?>, EntityType<CustomerEntity>> CUSTOMER = ENTITIES.register("customer",
             () -> EntityType.Builder.of(CustomerEntity::new, MobCategory.MISC)
                     .sized(0.5F, 1.8F).clientTrackingRange(8).build("customers:customer"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<SeatEntity>> SEAT = ENTITIES.register("seat",
+            () -> EntityType.Builder.of(SeatEntity::new, MobCategory.MISC)
+                    .sized(0.1F, 0.1F).clientTrackingRange(8).updateInterval(20).build("customers:seat"));
 
     public static final DeferredItem<DeferredSpawnEggItem> CUSTOMER_SPAWN_EGG = ITEMS.register("customer_spawn_egg",
             () -> new DeferredSpawnEggItem(CUSTOMER, 0xC8A27A, 0x4A6FA5, new Item.Properties()));

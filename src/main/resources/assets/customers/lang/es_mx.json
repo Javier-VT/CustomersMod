@@ -91,7 +91,7 @@
   "customers.status.left_patience": "§c[%1$s] %2$s se hartó de esperar su comida y se fue.§r",
   "customers.status.left_takeaway_patience": "§c[%1$s] %2$s se cansó de esperar su pedido para llevar y se fue.§r",
   "customers.status.open": "§a[%1$s] El restaurante está ABIERTO.",
-  "customers.tag.addon": "§8(Addon: %s)§r",
+  "customers.tag.addon": "§8(Mod: %s)§r",
   "customers.tag.order": "§7Pedido: §a%s§r",
   "customers.tag.searching": "§8(Buscando mesa...)§r",
   "customers.tag.takeaway": "§6[Para llevar]§r",

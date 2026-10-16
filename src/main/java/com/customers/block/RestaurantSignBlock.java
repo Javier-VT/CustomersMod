@@ -26,6 +26,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class RestaurantSignBlock extends HorizontalDirectionalBlock {
     public static final MapCodec<RestaurantSignBlock> CODEC = simpleCodec(RestaurantSignBlock::new);
+    private static final VoxelShape SHAPE = box(1, 0, 1, 15, 16, 15);
 
     public RestaurantSignBlock(Properties props) {
         super(props);
@@ -49,7 +50,7 @@ public class RestaurantSignBlock extends HorizontalDirectionalBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext ctx) {
-        return Shapes.block();
+        return SHAPE;
     }
 
     @Override

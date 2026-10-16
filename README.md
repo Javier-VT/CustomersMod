@@ -1,6 +1,6 @@
 # Customers (NeoForge 1.21.1)
 
-Port del addon de Bedrock "Customers Add-on" v0.6.3 a NeoForge 1.21.1 (el mismo NeoForge 21.1.262 de tu modpack).
+Mod de restaurante para NeoForge 1.21.1 (el mismo NeoForge 21.1.262 de tu modpack). Los clientes piden comida de vanilla y de los demás mods de comida del pack.
 
 ## Cómo obtener el .jar (sin instalar nada)
 1. Crea un repositorio nuevo en GitHub y sube TODO el contenido de esta carpeta (incluida `.github`).
@@ -14,10 +14,10 @@ Si prefieres compilar en tu PC: `./gradlew build` (necesita Java 21); el .jar qu
 - 11 sillas (roble, abeto, abedul, jungla, acacia, roble oscuro, manglar, cerezo, bambú, carmesí, distorsionado), cartel de restaurante y campana para llevar, con las mismas recetas.
 - Cliente NPC (huevo de aparición) con 11 skins, perfiles (normal/apurado/paciente/generoso/VIP), pedidos, propinas, reputación, horario de día y pedidos para llevar.
 - Menú automático: toma comida de vanilla y de cualquier mod (Farmer's Delight, Let's Do, etc.).
-- Las pantallas de Bedrock (formularios) son ahora pantallas del juego: clic derecho al cartel o a la campana.
+- Clic derecho al cartel o a la campana para abrir sus pantallas.
 - Idiomas: inglés y español (México).
 
-## Diferencias respecto a Bedrock
+## Notas
 - No hay silla de roble pálido (no existe en 1.21.1).
 - Los modelos con inclinación de 18° usan 22.5° (límite de Java).
 - Los datos del restaurante se guardan por mundo.
