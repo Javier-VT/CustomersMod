@@ -10,7 +10,7 @@ public final class ClientNet {
     public static void handleOpen(OpenScreenPayload p, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
-            switch (p.type()) {
+            switch (p.kind()) {
                 case "restaurant" -> mc.setScreen(new RestaurantScreen(p.data()));
                 case "bell" -> mc.setScreen(new BellScreen(p.data()));
                 default -> { }
