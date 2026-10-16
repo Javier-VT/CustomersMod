@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "customers:block/chair_acacia",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "customers:block/chair_acacia",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "customers:block/chair_acacia",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "customers:block/chair_acacia",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "customers:block/takeaway_bell"
+    }
+  }
+}
