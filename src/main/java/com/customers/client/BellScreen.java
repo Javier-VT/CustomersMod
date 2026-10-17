@@ -2,7 +2,9 @@ package com.customers.client;
 
 import com.customers.net.ActionPayload;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -62,16 +64,13 @@ public class BellScreen extends Screen {
     }
 
     private Screen orderScreen() {
-        List<ListPickScreen.Entry> entries = new ArrayList<>();
-        for (Tag t : d.getList("menu", Tag.TAG_STRING)) {
-            String id = t.getAsString();
-            entries.add(new ListPickScreen.Entry(itemName(id), () -> {
-                CompoundTag c = new CompoundTag();
-                c.putString("item", id);
-                send("order", c);
-            }));
-        }
-        return new ListPickScreen(Component.translatable("customers.bell.pick_title"), this, entries);
+        Set<String> disabled = new HashSet<>();
+        for (Tag t : d.getList("disabled", Tag.TAG_STRING)) disabled.add(t.getAsString());
+        return FoodGridScreen.pick(this, disabled, id -> {
+            CompoundTag c = new CompoundTag();
+            c.putString("item", id);
+            send("order", c);
+        });
     }
 
     private Screen serveScreen() {

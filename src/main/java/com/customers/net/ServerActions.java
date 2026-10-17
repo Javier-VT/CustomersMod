@@ -61,10 +61,9 @@ public final class ServerActions {
         CompoundTag t = new CompoundTag();
         t.putLong("pos", pos.asLong());
         t.putString("name", r.name);
-        t.putString("filter", r.filter);
-        ListTag filters = new ListTag();
-        for (String f : MenuManager.FILTERS) filters.add(StringTag.valueOf(f));
-        t.put("filters", filters);
+        ListTag dis = new ListTag();
+        for (String id : r.disabled) dis.add(StringTag.valueOf(id));
+        t.put("disabled", dis);
         t.putInt("patience", r.patience); t.putInt("max", r.maxCustomers); t.putInt("rate", r.rate);
         t.putInt("radius", r.radius); t.putBoolean("open", r.open);
         t.putInt("rep", r.rep); t.putInt("services", r.services); t.putInt("fails", r.fails);
@@ -97,9 +96,9 @@ public final class ServerActions {
             orders.add(c);
         }
         t.put("orders", orders);
-        ListTag menu = new ListTag();
-        for (MenuManager.Entry e : MenuManager.menuFor(r.filter)) menu.add(StringTag.valueOf(e.id().toString()));
-        t.put("menu", menu);
+        ListTag dis = new ListTag();
+        for (String id : r.disabled) dis.add(StringTag.valueOf(id));
+        t.put("disabled", dis);
         PacketDistributor.sendToPlayer(sp, new OpenScreenPayload("bell", t));
     }
 
@@ -142,8 +141,14 @@ public final class ServerActions {
         String name = d.getString("name").trim();
         if (name.length() > 32) name = name.substring(0, 32);
         r.name = name.isEmpty() ? sp.getName().getString() + "'s Restaurant" : name;
-        String f = d.getString("filter");
-        r.filter = MenuManager.FILTERS.contains(f) ? f : "any";
+        java.util.Set<String> disabled = new java.util.HashSet<>();
+        int n = 0;
+        for (Tag t : d.getList("disabled", Tag.TAG_STRING)) {
+            if (++n > 8192) break;
+            String id = t.getAsString();
+            if (MenuManager.find(id) != null) disabled.add(id);
+        }
+        r.disabled = disabled;
         r.patience = d.getInt("patience");
         r.maxCustomers = d.getInt("max");
         r.rate = d.getInt("rate");
@@ -166,7 +171,7 @@ public final class ServerActions {
         if (r == null) { sp.sendSystemMessage(Component.translatable("customers.bell.no_restaurant")); return; }
         if (!r.open) { sp.sendSystemMessage(Component.translatable("customers.bell.closed", r.name)); return; }
         MenuManager.Entry entry = MenuManager.find(itemId);
-        if (entry == null || !MenuManager.menuFor(r.filter).contains(entry)) return;
+        if (entry == null || !MenuManager.allowed(r).contains(entry)) return;
         String bellKey = RestaurantData.key(pos, dimOf(level));
         String k = okey(sp.getUUID(), bellKey);
         if (!ORDERS.containsKey(k) && ordersFor(bellKey).size() >= QUEUE_LIMIT) {

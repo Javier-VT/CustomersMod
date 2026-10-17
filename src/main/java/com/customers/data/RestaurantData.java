@@ -21,7 +21,8 @@ public class RestaurantData extends SavedData {
         public BlockPos pos;
         public String dim;
         public String name;
-        public String filter = "any";
+        /** Item ids the owner turned off. Everything else (from any mod) is on the menu. */
+        public java.util.Set<String> disabled = new java.util.HashSet<>();
         public int patience = 5;      // minutes
         public int maxCustomers = 12;
         public int rate = 1;          // 0 high, 1 medium, 2 low
@@ -39,17 +40,21 @@ public class RestaurantData extends SavedData {
         CompoundTag save() {
             CompoundTag t = new CompoundTag();
             t.putInt("x", pos.getX()); t.putInt("y", pos.getY()); t.putInt("z", pos.getZ());
-            t.putString("dim", dim); t.putString("name", name); t.putString("filter", filter);
+            t.putString("dim", dim); t.putString("name", name);
             t.putInt("patience", patience); t.putInt("max", maxCustomers); t.putInt("rate", rate);
             t.putInt("radius", radius); t.putBoolean("open", open); t.putInt("rep", rep);
             t.putInt("services", services); t.putInt("fails", fails); t.putString("owner", owner);
+            ListTag dis = new ListTag();
+            for (String d : disabled) dis.add(net.minecraft.nbt.StringTag.valueOf(d));
+            t.put("disabled", dis);
             return t;
         }
 
         static Restaurant load(CompoundTag t) {
             Restaurant r = new Restaurant();
             r.pos = new BlockPos(t.getInt("x"), t.getInt("y"), t.getInt("z"));
-            r.dim = t.getString("dim"); r.name = t.getString("name"); r.filter = t.getString("filter");
+            r.dim = t.getString("dim"); r.name = t.getString("name");
+            for (Tag d : t.getList("disabled", Tag.TAG_STRING)) r.disabled.add(d.getAsString());
             r.patience = t.getInt("patience"); r.maxCustomers = t.getInt("max"); r.rate = t.getInt("rate");
             r.radius = t.getInt("radius"); r.open = t.getBoolean("open"); r.rep = t.getInt("rep");
             r.services = t.getInt("services"); r.fails = t.getInt("fails"); r.owner = t.getString("owner");

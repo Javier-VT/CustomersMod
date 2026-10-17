@@ -178,7 +178,7 @@ public final class RestaurantManager {
         CustomerEntity c = Reg.CUSTOMER.get().create(level);
         if (c == null) return;
         c.moveTo(spawn.x, spawn.y, spawn.z, RNG.nextFloat() * 360.0F, 0.0F);
-        c.setupRestaurant(key, r.name, r.filter, r.patience);
+        c.setupRestaurant(key, r.name, r.patience);
         if (takeaway) c.setupTakeaway(chosenBell.key(), chosenBell.pos(), counter);
         c.initCustomer();
         level.addFreshEntity(c);

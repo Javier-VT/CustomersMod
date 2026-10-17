@@ -60,7 +60,7 @@ public class CustomerEntity extends PathfinderMob {
     // ---- server-side state (saved in NBT) ----
     private State state = State.SEARCHING;
     private boolean initialized;
-    private String restaurantKey = "", restaurantName = "Restaurant", filter = "any";
+    private String restaurantKey = "", restaurantName = "Restaurant";
     private int patienceMinutes = 3;
     private boolean takeaway;
     private String bellKey = "";
@@ -162,10 +162,9 @@ public class CustomerEntity extends PathfinderMob {
     }
 
     // ---------- setup (called by the spawner) ----------
-    public void setupRestaurant(String key, String name, String filter, int minutes) {
+    public void setupRestaurant(String key, String name, int minutes) {
         this.restaurantKey = key;
         this.restaurantName = name;
-        this.filter = filter;
         this.patienceMinutes = Math.min(20, Math.max(1, minutes));
     }
 
@@ -201,9 +200,8 @@ public class CustomerEntity extends PathfinderMob {
         }
         maxPatience = (int) Math.round(patienceMinutes * 1200 * profilePatience);
 
-        List<MenuManager.Entry> menu = MenuManager.menuFor(filter);
-        if (menu.isEmpty()) menu = MenuManager.ITEMS;
-        if (!menu.isEmpty()) desiredItem = menu.get(random.nextInt(menu.size())).id().toString();
+        MenuManager.Entry order = MenuManager.pick(d == null ? null : d.restaurants.get(restaurantKey), level().getDayTime() % 24000L, random);
+        if (order != null) desiredItem = order.id().toString();
 
         state = takeaway ? State.GOING_TO_COUNTER : State.SEARCHING;
         lastX = getX(); lastZ = getZ();
@@ -419,7 +417,7 @@ public class CustomerEntity extends PathfinderMob {
 
     private String orderAddon() {
         ResourceLocation id = ResourceLocation.tryParse(desiredItem);
-        return id == null ? "?" : MenuManager.addonName(id.getNamespace());
+        return id == null ? "?" : MenuManager.modName(id.getNamespace());
     }
 
     private Component mood() {
@@ -524,14 +522,19 @@ public class CustomerEntity extends PathfinderMob {
         player.sendSystemMessage(Component.literal("§e[" + customerName + "]: §f\"")
                 .append(Component.translatable("customers.phrase." + group + "." + idx)).append("\"§r"));
 
+        // fancier dishes pay more: tier 1 = +0, tier 2 = +1, tier 3 = +2
+        MenuManager.Entry ordered = MenuManager.find(desiredItem);
+        int tierBonus = ordered == null ? 0 : ordered.tier() - 1;
         double chance = vip ? 0.92 : profile.equals("generous") ? 0.82 : 0.65;
         if (random.nextDouble() < chance) {
-            int total = (vip ? 5 : 3) + tip;
+            int base = (vip ? 5 : 3) + tierBonus;
+            int total = base + tip;
             spawnAtLocation(new ItemStack(Items.EMERALD, total));
-            player.sendSystemMessage(Component.translatable(vip ? "customers.payment.emeralds_vip" : "customers.payment.emeralds",
-                    String.valueOf(total), String.valueOf(tip)));
+            player.sendSystemMessage(vip
+                    ? Component.translatable("customers.payment.emeralds_vip", String.valueOf(total), String.valueOf(tip))
+                    : Component.translatable("customers.payment.emeralds", String.valueOf(total), String.valueOf(base), String.valueOf(tip)));
         } else {
-            int xp = (vip ? 90 : 50) + tip * 25;
+            int xp = (vip ? 90 : 50) + tip * 25 + tierBonus * 20;
             player.giveExperiencePoints(xp);
             player.sendSystemMessage(Component.translatable("customers.payment.xp", String.valueOf(xp)));
         }
@@ -557,7 +560,7 @@ public class CustomerEntity extends PathfinderMob {
         t.putBoolean("Init", initialized);
         t.putInt("Variant", getVariant());
         t.putBoolean("Sitting", isSitting());
-        t.putString("RestKey", restaurantKey); t.putString("RestName", restaurantName); t.putString("Filter", filter);
+        t.putString("RestKey", restaurantKey); t.putString("RestName", restaurantName);
         t.putInt("PatMin", patienceMinutes);
         t.putBoolean("Takeaway", takeaway); t.putString("BellKey", bellKey);
         if (bellPos != null) { t.putInt("BX", bellPos.getX()); t.putInt("BY", bellPos.getY()); t.putInt("BZ", bellPos.getZ()); }
@@ -577,7 +580,7 @@ public class CustomerEntity extends PathfinderMob {
         initialized = t.getBoolean("Init");
         entityData.set(VARIANT, t.getInt("Variant"));
         entityData.set(SITTING, t.getBoolean("Sitting"));
-        restaurantKey = t.getString("RestKey"); restaurantName = t.getString("RestName"); filter = t.getString("Filter");
+        restaurantKey = t.getString("RestKey"); restaurantName = t.getString("RestName");
         patienceMinutes = Math.max(1, t.getInt("PatMin"));
         takeaway = t.getBoolean("Takeaway"); bellKey = t.getString("BellKey");
         bellPos = t.contains("BX") ? new BlockPos(t.getInt("BX"), t.getInt("BY"), t.getInt("BZ")) : null;
