@@ -25,6 +25,8 @@ public class RestaurantScreen extends Screen {
     private String nameVal;
     private int patienceVal, maxVal, rateVal, radiusVal;
     private Set<String> disabled = new HashSet<>();
+    private final Set<String> discovered = new HashSet<>();
+    private boolean auto;
 
     private EditBox nameBox;
     private CycleButton<Integer> rateBtn;
@@ -40,6 +42,8 @@ public class RestaurantScreen extends Screen {
         rateVal = Math.max(0, Math.min(2, data.getInt("rate")));
         radiusVal = clamp(data.getInt("radius"), 8, 64);
         for (Tag t : data.getList("disabled", Tag.TAG_STRING)) disabled.add(t.getAsString());
+        for (Tag t : data.getList("discovered", Tag.TAG_STRING)) discovered.add(t.getAsString());
+        auto = data.getBoolean("auto");
     }
 
     private static int clamp(int v, int lo, int hi) {
@@ -52,7 +56,7 @@ public class RestaurantScreen extends Screen {
 
     private long enabledCount() {
         MenuManager.ensure();
-        return MenuManager.ALL.stream().filter(e -> !disabled.contains(e.id().toString())).count();
+        return MenuManager.ALL.stream().filter(e -> MenuManager.onMenu(e.id().toString(), disabled, auto, discovered)).count();
     }
 
     @Override
@@ -68,10 +72,18 @@ public class RestaurantScreen extends Screen {
         addRenderableWidget(nameBox);
 
         y += 24;
+        int editW = full - 110;
         addRenderableWidget(Button.builder(Component.translatable("customers.menu.edit", enabledCount(), MenuManager.ALL.size()), b -> {
             snap();
-            minecraft.setScreen(FoodGridScreen.edit(this, disabled, set -> disabled = set));
-        }).bounds(left, y, full, 20).build());
+            minecraft.setScreen(FoodGridScreen.edit(this, disabled, auto, discovered, set -> disabled = set));
+        }).bounds(left, y, editW, 20).build());
+        addRenderableWidget(CycleButton.<Boolean>builder(v -> Component.translatable(v ? "customers.menu.mode_auto" : "customers.menu.mode_all"))
+                .withValues(List.of(true, false)).withInitialValue(auto).displayOnlyValue()
+                .create(left + editW + 4, y, 106, 20, Component.empty(), (b, v) -> {
+                    snap();
+                    auto = v;
+                    rebuildWidgets();
+                }));
 
         y += 24;
         rateBtn = addRenderableWidget(CycleButton.<Integer>builder(i -> Component.translatable(
@@ -114,6 +126,7 @@ public class RestaurantScreen extends Screen {
         ListTag dis = new ListTag();
         for (String id : disabled) dis.add(StringTag.valueOf(id));
         t.put("disabled", dis);
+        t.putBoolean("auto", auto);
         PacketDistributor.sendToServer(new ActionPayload("save_restaurant", t));
         onClose();
     }

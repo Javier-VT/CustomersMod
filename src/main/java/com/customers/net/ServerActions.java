@@ -64,6 +64,10 @@ public final class ServerActions {
         ListTag dis = new ListTag();
         for (String id : r.disabled) dis.add(StringTag.valueOf(id));
         t.put("disabled", dis);
+        ListTag disc = new ListTag();
+        for (String id : data.discovered) disc.add(StringTag.valueOf(id));
+        t.put("discovered", disc);
+        t.putBoolean("auto", r.auto);
         t.putInt("patience", r.patience); t.putInt("max", r.maxCustomers); t.putInt("rate", r.rate);
         t.putInt("radius", r.radius); t.putBoolean("open", r.open);
         t.putInt("rep", r.rep); t.putInt("services", r.services); t.putInt("fails", r.fails);
@@ -96,9 +100,9 @@ public final class ServerActions {
             orders.add(c);
         }
         t.put("orders", orders);
-        ListTag dis = new ListTag();
-        for (String id : r.disabled) dis.add(StringTag.valueOf(id));
-        t.put("disabled", dis);
+        ListTag menu = new ListTag();
+        for (MenuManager.Entry e : MenuManager.allowed(data, r)) menu.add(StringTag.valueOf(e.id().toString()));
+        t.put("menu", menu);
         PacketDistributor.sendToPlayer(sp, new OpenScreenPayload("bell", t));
     }
 
@@ -149,6 +153,7 @@ public final class ServerActions {
             if (MenuManager.find(id) != null) disabled.add(id);
         }
         r.disabled = disabled;
+        r.auto = d.getBoolean("auto");
         r.patience = d.getInt("patience");
         r.maxCustomers = d.getInt("max");
         r.rate = d.getInt("rate");
@@ -171,7 +176,7 @@ public final class ServerActions {
         if (r == null) { sp.sendSystemMessage(Component.translatable("customers.bell.no_restaurant")); return; }
         if (!r.open) { sp.sendSystemMessage(Component.translatable("customers.bell.closed", r.name)); return; }
         MenuManager.Entry entry = MenuManager.find(itemId);
-        if (entry == null || !MenuManager.allowed(r).contains(entry)) return;
+        if (entry == null || !MenuManager.allowed(data, r).contains(entry)) return;
         String bellKey = RestaurantData.key(pos, dimOf(level));
         String k = okey(sp.getUUID(), bellKey);
         if (!ORDERS.containsKey(k) && ordersFor(bellKey).size() >= QUEUE_LIMIT) {

@@ -23,6 +23,8 @@ public class RestaurantData extends SavedData {
         public String name;
         /** Item ids the owner turned off. Everything else (from any mod) is on the menu. */
         public java.util.Set<String> disabled = new java.util.HashSet<>();
+        /** true = only foods the players already crafted/obtained are served (menu fills itself). */
+        public boolean auto = true;
         public int patience = 5;      // minutes
         public int maxCustomers = 12;
         public int rate = 1;          // 0 high, 1 medium, 2 low
@@ -47,6 +49,7 @@ public class RestaurantData extends SavedData {
             ListTag dis = new ListTag();
             for (String d : disabled) dis.add(net.minecraft.nbt.StringTag.valueOf(d));
             t.put("disabled", dis);
+            t.putBoolean("auto", auto);
             return t;
         }
 
@@ -55,6 +58,7 @@ public class RestaurantData extends SavedData {
             r.pos = new BlockPos(t.getInt("x"), t.getInt("y"), t.getInt("z"));
             r.dim = t.getString("dim"); r.name = t.getString("name");
             for (Tag d : t.getList("disabled", Tag.TAG_STRING)) r.disabled.add(d.getAsString());
+            r.auto = t.contains("auto") && t.getBoolean("auto");
             r.patience = t.getInt("patience"); r.maxCustomers = t.getInt("max"); r.rate = t.getInt("rate");
             r.radius = t.getInt("radius"); r.open = t.getBoolean("open"); r.rep = t.getInt("rep");
             r.services = t.getInt("services"); r.fails = t.getInt("fails"); r.owner = t.getString("owner");
@@ -69,6 +73,8 @@ public class RestaurantData extends SavedData {
     }
 
     public final Map<String, Restaurant> restaurants = new LinkedHashMap<>();
+    /** Item ids any player has crafted, smelted, picked up or held in this world. */
+    public final java.util.Set<String> discovered = new java.util.HashSet<>();
     public final Map<String, Bell> bells = new LinkedHashMap<>();
 
     public static String key(BlockPos pos, String dim) {
@@ -177,6 +183,9 @@ public class RestaurantData extends SavedData {
             bs.add(t);
         }
         tag.put("bells", bs);
+        ListTag ds = new ListTag();
+        for (String id : discovered) ds.add(net.minecraft.nbt.StringTag.valueOf(id));
+        tag.put("discovered", ds);
         return tag;
     }
 
@@ -186,6 +195,7 @@ public class RestaurantData extends SavedData {
             Restaurant r = Restaurant.load((CompoundTag) t);
             d.restaurants.put(r.key(), r);
         }
+        for (Tag t : tag.getList("discovered", Tag.TAG_STRING)) d.discovered.add(t.getAsString());
         for (Tag t : tag.getList("bells", Tag.TAG_COMPOUND)) {
             CompoundTag c = (CompoundTag) t;
             Bell b = new Bell(new BlockPos(c.getInt("x"), c.getInt("y"), c.getInt("z")), c.getString("dim"));

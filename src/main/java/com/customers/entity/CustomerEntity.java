@@ -200,7 +200,7 @@ public class CustomerEntity extends PathfinderMob {
         }
         maxPatience = (int) Math.round(patienceMinutes * 1200 * profilePatience);
 
-        MenuManager.Entry order = MenuManager.pick(d == null ? null : d.restaurants.get(restaurantKey), level().getDayTime() % 24000L, random);
+        MenuManager.Entry order = MenuManager.pick(d, d == null ? null : d.restaurants.get(restaurantKey), level().getDayTime() % 24000L, random);
         if (order != null) desiredItem = order.id().toString();
 
         state = takeaway ? State.GOING_TO_COUNTER : State.SEARCHING;

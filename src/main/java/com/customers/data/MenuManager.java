@@ -18,17 +18,21 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.food.FoodProperties;
-import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.PotionItem;
+import net.minecraft.world.item.ItemNameBlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.UseAnim;
 import net.neoforged.fml.ModList;
 
 /**
- * Food catalogue. Every registered item that is really edible (has the FOOD component) from ANY mod is
- * a candidate; it is classified (category + price tier) from common tags, use animation, nutrition and
- * name words. Restaurants only store which foods are DISABLED, so foods from newly added mods are
- * automatically on the menu. Used on both the server and the client (same registries).
+ * Food catalogue. Detection uses NO name keywords: an item is a food when it has the FOOD component, is eaten or
+ * drunk (use animation EAT/DRINK, which covers drinks that are not FOOD items) or sits in the common
+ * c:drinks / c:foods/edible_when_placed tags. Only dangerous foods are skipped (raw meat/fish, poison, rotten...).
+ * Name words are used ONLY as a last-resort fallback to pick the category icon filter.
+ * Restaurants store the foods they DISABLED, so foods from newly added mods are automatically on the menu, and
+ * optionally only foods the players have already crafted/obtained ("discovered") are served.
  */
 public final class MenuManager {
     private MenuManager() {}
@@ -50,14 +54,14 @@ public final class MenuManager {
     public static final List<Entry> ALL = new ArrayList<>();
     /** namespace -> display name, only mods that have food. */
     public static final Map<String, String> MODS = new TreeMap<>();
+    private static final Map<String, Entry> INDEX = new HashMap<>();
     private static final Map<String, Deque<String>> RECENT = new HashMap<>();
     private static boolean built;
 
     // ------------------------------------------------------------------ classification data
     private static Set<String> words(String s) { return new HashSet<>(Arrays.asList(s.split(" "))); }
 
-    private static final Set<String> EXCLUDE_WORDS = words("rotten spider poisonous poison pufferfish spoiled uncooked raw suspicious");
-    private static final Set<String> EXCLUDE_IDS = Set.of("minecraft:chorus_fruit", "minecraft:enchanted_golden_apple");
+    private static final Set<String> EXCLUDE_IDS = Set.of("minecraft:chorus_fruit", "minecraft:enchanted_golden_apple", "minecraft:suspicious_stew", "minecraft:ominous_bottle");
     private static final Set<String> DRINK_WORDS = words("juice tea coffee cider smoothie shake milkshake soda lemonade cocoa wine beer ale mead brew latte espresso drink nectar punch eggnog");
     private static final Set<String> MEAL_WORDS = words("soup stew salad burger hamburger cheeseburger sandwich pizza pasta noodle noodles spaghetti macaroni rice risotto lasagna sushi taco tacos burrito quesadilla enchilada curry omelet omelette roast casserole dumpling dumplings bowl plate meal feast dinner lunch breakfast combo kebab skewer chili chowder bisque goulash wrap fries hotdog stir fry paella ramen pot pie_meat");
     private static final Set<String> BAKERY_WORDS = words("cake pie cookie cookies biscuit bread toast donut doughnut muffin pastry croissant bagel brownie pancake pancakes waffle waffles tart cupcake pudding flan candy chocolate caramel toffee fudge marshmallow macaron churro crepe tiramisu cheesecake shortcake strudel cobbler parfait sundae mousse icecream gelato sorbet bun roll scone pretzel popcorn cracker wafer jam jelly honey");
@@ -88,24 +92,43 @@ public final class MenuManager {
         return sb.toString();
     }
 
-    private static boolean excluded(ResourceLocation id, ItemStack st, FoodProperties fp, String[] parts) {
+    private static final java.util.List<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> LETHAL =
+            java.util.List.of(MobEffects.POISON, MobEffects.WITHER, MobEffects.HUNGER);
+
+    private static boolean has(Set<String> tags, String path) { return tags.contains(path); }
+
+    private static boolean tree(Set<String> tags, String root) {
+        for (String t : tags) if (t.equals(root) || t.startsWith(root + "/")) return true;
+        return false;
+    }
+
+    private static boolean excluded(ResourceLocation id, FoodProperties fp, Set<String> tags) {
         if (EXCLUDE_IDS.contains(id.toString())) return true;
-        if (hasAny(EXCLUDE_WORDS, parts)) return true;
-        if (st.is(tag("foods/raw_meat")) || st.is(tag("foods/raw_fish")) || st.is(tag("foods/food_poisoning"))) return true;
-        for (FoodProperties.PossibleEffect pe : fp.effects()) {
-            if (pe.probability() >= 0.3F && pe.effect().getEffect().value().getCategory() == MobEffectCategory.HARMFUL) return true;
+        if (has(tags, "foods/raw_meat") || has(tags, "foods/raw_fish") || has(tags, "foods/food_poisoning")) return true;
+        if (fp != null) {
+            for (FoodProperties.PossibleEffect pe : fp.effects()) {
+                if (pe.probability() >= 0.3F && LETHAL.contains(pe.effect().getEffect())) return true;
+            }
         }
         return false;
     }
 
-    private static Category classify(ItemStack st, FoodProperties fp, String[] parts) {
-        if (st.getUseAnimation() == UseAnim.DRINK || hasAny(DRINK_WORDS, parts)) return Category.DRINK;
-        if (st.is(tag("foods/soup")) || hasAny(MEAL_WORDS, parts)) return Category.MEAL;
-        if (st.is(tag("foods/pie")) || st.is(tag("foods/cookie")) || st.is(tag("foods/bread")) || st.is(tag("foods/candy"))
-                || st.is(tag("foods/dessert")) || hasAny(BAKERY_WORDS, parts)) return Category.BAKERY;
-        if (st.is(tag("foods/cooked_meat")) || st.is(tag("foods/cooked_fish")) || hasAny(MEAT_WORDS, parts)) return Category.MEAT_FISH;
-        if (st.is(tag("foods/fruit")) || st.is(tag("foods/vegetable")) || st.is(tag("foods/berry")) || hasAny(PRODUCE_WORDS, parts)) return Category.PRODUCE;
-        return fp.nutrition() >= 7 ? Category.MEAL : Category.OTHER;
+    private static Category classify(Item item, ItemStack st, FoodProperties fp, Set<String> tags, boolean drinkAnim, String[] parts) {
+        int n = fp == null ? 4 : fp.nutrition();
+        if (drinkAnim || tree(tags, "drinks")) return Category.DRINK;
+        if (has(tags, "foods/soup") || has(tags, "foods/cooked_meal")) return Category.MEAL;
+        if (has(tags, "foods/pie") || has(tags, "foods/cookie") || has(tags, "foods/bread") || has(tags, "foods/candy")
+                || has(tags, "foods/dessert") || has(tags, "foods/edible_when_placed")) return Category.BAKERY;
+        if (has(tags, "foods/cooked_meat") || has(tags, "foods/cooked_fish")) return Category.MEAT_FISH;
+        if (has(tags, "foods/fruit") || has(tags, "foods/vegetable") || has(tags, "foods/berry")
+                || tree(tags, "crops") || tree(tags, "fruits") || tree(tags, "vegetables") || item instanceof ItemNameBlockItem) return Category.PRODUCE;
+        // fallback for mods that do not tag their food: name hints only choose the filter category
+        if (hasAny(DRINK_WORDS, parts)) return Category.DRINK;
+        if (hasAny(MEAL_WORDS, parts)) return Category.MEAL;
+        if (hasAny(BAKERY_WORDS, parts)) return Category.BAKERY;
+        if (hasAny(MEAT_WORDS, parts)) return Category.MEAT_FISH;
+        if (hasAny(PRODUCE_WORDS, parts)) return Category.PRODUCE;
+        return n >= 7 || (n >= 5 && st.getMaxStackSize() == 1) ? Category.MEAL : Category.OTHER;
     }
 
     public static synchronized void ensure() {
@@ -115,25 +138,27 @@ public final class MenuManager {
     public static synchronized void generate() {
         ALL.clear();
         MODS.clear();
+        INDEX.clear();
         for (Item item : BuiltInRegistries.ITEM) {
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-            ItemStack st;
-            FoodProperties fp;
             try {
-                st = new ItemStack(item);
+                ItemStack st = new ItemStack(item);
                 if (st.isEmpty()) continue;
-                fp = st.get(DataComponents.FOOD);
-            } catch (Exception e) {
-                continue;
-            }
-            if (fp == null) continue;
-            String[] parts = id.getPath().split("[_/]");
-            try {
-                if (excluded(id, st, fp, parts)) continue;
-                Category cat = classify(st, fp, parts);
-                int n = fp.nutrition();
+                FoodProperties fp = st.get(DataComponents.FOOD);
+                UseAnim anim = st.getUseAnimation();
+                Set<String> tags = new HashSet<>();
+                st.getTags().forEach(t -> { if (t.location().getNamespace().equals("c")) tags.add(t.location().getPath()); });
+                boolean drinkAnim = anim == UseAnim.DRINK;
+                boolean edible = fp != null || anim == UseAnim.EAT || drinkAnim || tree(tags, "drinks") || has(tags, "foods/edible_when_placed");
+                if (!edible) continue;
+                if (item instanceof PotionItem || st.has(DataComponents.POTION_CONTENTS)) continue;
+                if (excluded(id, fp, tags)) continue;
+                String[] parts = id.getPath().split("[_/]");
+                Category cat = classify(item, st, fp, tags, drinkAnim, parts);
+                int n = fp == null ? 4 : fp.nutrition();
                 int tier = n <= 3 ? 1 : n <= 7 ? 2 : 3;
-                ALL.add(new Entry(id, id.getNamespace(), cat, tier, n));
+                Entry en = new Entry(id, id.getNamespace(), cat, tier, n);
+                ALL.add(en);
                 MODS.computeIfAbsent(id.getNamespace(), MenuManager::modName);
             } catch (Exception e) {
                 // an exotic item that fails to classify is simply skipped
@@ -148,24 +173,45 @@ public final class MenuManager {
             int c = a.mod().compareTo(b.mod());
             return c != 0 ? c : a.id().getPath().compareTo(b.id().getPath());
         });
+        for (Entry e : ALL) INDEX.put(e.id().toString(), e);
         built = true;
     }
 
     public static Entry find(String id) {
         ensure();
-        ResourceLocation rl = ResourceLocation.tryParse(id);
-        if (rl == null) return null;
-        for (Entry e : ALL) if (e.id().equals(rl)) return e;
-        return null;
+        return id == null ? null : INDEX.get(id);
     }
 
+    /** Shared rule (server and client): is this food on the menu? */
+    public static boolean onMenu(String id, Set<String> disabled, boolean auto, Set<String> discovered) {
+        return !disabled.contains(id) && (!auto || discovered.contains(id));
+    }
+
+    /** Called when a player crafts, picks up, smelts or holds an item. @return true when it is a new food. */
+    public static boolean discover(RestaurantData d, ItemStack st) {
+        if (st.isEmpty()) return false;
+        String id = BuiltInRegistries.ITEM.getKey(st.getItem()).toString();
+        if (!INDEX.containsKey(id)) return false;
+        return d.discovered.add(id) && markDirty(d);
+    }
+
+    private static boolean markDirty(RestaurantData d) { d.setDirty(); return true; }
+
     // ------------------------------------------------------------------ restaurant menu
-    /** Foods the restaurant serves: everything except what the owner disabled. */
-    public static List<Entry> allowed(RestaurantData.Restaurant r) {
+    /** Minimum size of a discovery-only menu; below it the restaurant falls back to all enabled foods. */
+    public static final int MIN_AUTO_MENU = 4;
+
+    /** Foods the restaurant serves: not disabled by the owner and, in auto mode, already discovered by the players. */
+    public static List<Entry> allowed(RestaurantData d, RestaurantData.Restaurant r) {
         ensure();
-        if (r == null || r.disabled.isEmpty()) return ALL;
+        if (r == null) return ALL;
         List<Entry> out = new ArrayList<>();
-        for (Entry e : ALL) if (!r.disabled.contains(e.id().toString())) out.add(e);
+        for (Entry e : ALL) if (onMenu(e.id().toString(), r.disabled, r.auto, d == null ? Set.of() : d.discovered)) out.add(e);
+        if (out.size() < MIN_AUTO_MENU && r.auto) {
+            // too little discovered yet: serve every food the owner has not disabled
+            out.clear();
+            for (Entry e : ALL) if (!r.disabled.contains(e.id().toString())) out.add(e);
+        }
         return out.isEmpty() ? ALL : out;
     }
 
@@ -185,8 +231,8 @@ public final class MenuManager {
      * Weighted random order: depends on time of day (breakfast pastries/drinks, lunch meals...), on the
      * restaurant's reputation (better reputation = fancier orders) and avoids repeating recent orders.
      */
-    public static Entry pick(RestaurantData.Restaurant r, long dayTime, RandomSource rnd) {
-        List<Entry> pool = allowed(r);
+    public static Entry pick(RestaurantData d, RestaurantData.Restaurant r, long dayTime, RandomSource rnd) {
+        List<Entry> pool = allowed(d, r);
         if (pool.isEmpty()) return null;
         int rep = r == null ? 50 : r.rep;
         Deque<String> recent = r == null ? null : RECENT.computeIfAbsent(r.key(), k -> new ArrayDeque<>());

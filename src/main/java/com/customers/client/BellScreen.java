@@ -64,9 +64,9 @@ public class BellScreen extends Screen {
     }
 
     private Screen orderScreen() {
-        Set<String> disabled = new HashSet<>();
-        for (Tag t : d.getList("disabled", Tag.TAG_STRING)) disabled.add(t.getAsString());
-        return FoodGridScreen.pick(this, disabled, id -> {
+        Set<String> menu = new HashSet<>();
+        for (Tag t : d.getList("menu", Tag.TAG_STRING)) menu.add(t.getAsString());
+        return FoodGridScreen.pick(this, menu, id -> {
             CompoundTag c = new CompoundTag();
             c.putString("item", id);
             send("order", c);
