@@ -91,11 +91,6 @@ public final class ServerEvents {
     }
 
     @SubscribeEvent
-    public static void pickedUp(PlayerEvent.ItemPickupEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p) discover(p.getServer(), e.getStack());
-    }
-
-    @SubscribeEvent
     public static void logout(PlayerEvent.PlayerLoggedOutEvent e) {
         ServerActions.removeOrdersOf(e.getEntity().getUUID());
     }
